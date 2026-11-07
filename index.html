@@ -420,6 +420,35 @@ textarea{min-height:240px;font:12.5px/1.55 ui-monospace,Menlo,"Roboto Mono",mono
   .tv-side{grid-template-columns:1fr;justify-items:start}
   .tv-side .tv-row{display:flex;gap:4vmin;align-items:center}
 }
+/* full-screen defense view */
+.dv{position:fixed;inset:0;z-index:40;background:radial-gradient(120% 80% at 50% 0%,#14286b 0%,#081232 60%,#050a1f 100%);color:#eef2ff;display:flex;flex-direction:column;
+  padding:max(14px,env(safe-area-inset-top,0px)) max(18px,env(safe-area-inset-right,0px)) max(14px,env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));gap:1.6vh;overflow:hidden}
+.dv-top{display:flex;align-items:center;gap:8px}
+.dv-ttl{flex:1;min-width:0;font-size:clamp(22px,5vmin,52px);font-weight:900;color:#ffc642;line-height:1.15}
+.dv-ttl small{display:block;font-size:.4em;font-weight:700;color:rgba(238,242,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dv-b{width:44px;height:44px;flex:none;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:#eef2ff;display:grid;place-items:center;font-size:28px;font-weight:800;line-height:1;padding:0}
+.dv-b:disabled{opacity:.3}
+.dv-b svg{width:22px;height:22px}
+.dv-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.dv-chips::-webkit-scrollbar{display:none}
+.dv-chip{flex:none;border:0;border-radius:999px;background:rgba(255,255,255,.1);color:#eef2ff;padding:9px 18px;font-size:clamp(15px,3vmin,26px);font-weight:800}
+.dv-chip.now{box-shadow:inset 0 0 0 2px #ffc642}
+.dv-chip[aria-pressed=true]{background:#ffc642;color:#060d26}
+.dv-main{flex:1;min-height:0;min-width:0;container-type:size;display:flex;align-items:center;justify-content:center}
+.dv .cfield{flex:none;width:100%;width:min(100cqw,calc(100cqh*100/87));container-type:inline-size}
+.dv .fl{font-size:clamp(15px,4.6vmin,40px);font-size:clamp(14px,5.2cqw,46px);padding:.3em .65em;border-radius:.45em}
+.dv .fl.p{background:#ffc642;color:#060d26}
+.dv .fl.empty{background:rgba(23,55,38,.55);color:rgba(255,255,255,.6);border:2px dashed rgba(255,255,255,.35);box-shadow:none;font-weight:700}
+.dv .fl.dup{box-shadow:0 0 0 3px #ff5d6b}
+.dv-empty{margin:auto;text-align:center;font-size:clamp(16px,3vmin,28px);color:rgba(238,242,255,.7)}
+.dv-rest{display:flex;flex-direction:column;gap:.4em;font-size:clamp(14px,2.8vmin,24px);line-height:1.5;color:rgba(238,242,255,.92)}
+.dv-rest:empty{display:none}
+.dv-rest b{color:#ffc642;margin-right:.6em}
+.dv-rest .w{color:#ff8a94;font-weight:700}
+@media (orientation:landscape) and (min-width:560px){
+  .dv{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,30%);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"top top" "main chips" "main rest";column-gap:3vmin;row-gap:1.6vh}
+  .dv-top{grid-area:top}.dv-main{grid-area:main}.dv-chips{grid-area:chips;flex-wrap:wrap;overflow:visible;align-content:flex-start}.dv-rest{grid-area:rest;overflow-y:auto;min-height:0}
+}
 @media (max-width:370px){.lrow{grid-template-columns:18px minmax(0,1fr) 64px 32px 24px;gap:5px}.rg{grid-template-columns:repeat(3,1fr)}.pb{font-size:15px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -472,6 +501,7 @@ const I={
   back:ic('<path d="M15 5l-7 7 7 7"/>'),
   undo:ic('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'),
   tv:ic('<rect x="2.5" y="4.5" width="19" height="13" rx="2"/><path d="M8 21h8M12 17.5V21"/>'),
+  field:ic('<path d="M12 3.5 20.5 12 12 20.5 3.5 12z"/><path d="M12 8.5 15.5 12 12 15.5 8.5 12z"/>'),
   more:ic('<circle cx="12" cy="5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="19" r="1.3" fill="currentColor"/>'),
   plus:ic('<path d="M12 5v14M5 12h14"/>'),
   x:ic('<path d="M6 6l12 12M18 6 6 18"/>'),
@@ -611,6 +641,11 @@ function goHome(){hideSnack();const n=M.length;Object.assign(R,{screen:'home',gi
 function openSheet(name,sd){hideSnack();const had=!!R.sheet;R.sheet=name;R.sd=sd||null;if(!had)pushM('sheet');render()}
 function closeSheet(){if(!R.sheet)return;R.sheet=null;R.sd=null;if(topM()==='sheet')popM(1);render()}
 function openTv(){hideSnack();R.tv=true;R.sheet=null;pushM('tv');render();enterFull()}
+function openDv(){const g=G();if(!g)return;const n=Math.max(g.innings,g.inning);
+  R.dvInn=Math.min(n,g.status==='live'?(defending(g)?g.inning:nextDefInning(g)):1);
+  hideSnack();R.sheet=null;R.sd=null;R.tv='def';if(topM()==='sheet')swapM('tv');else pushM('tv');render();dvFocus()}
+function dvGo(k){const g=G();if(!g)return;R.dvInn=Math.min(Math.max(k,1),Math.max(g.innings,g.inning));render();dvFocus()}
+function dvFocus(){const c=document.querySelector('.dv-chip[aria-pressed="true"]');if(c&&c.scrollIntoView)try{c.scrollIntoView({inline:'center',block:'nearest'})}catch(e){}}
 function closeTv(){if(!R.tv)return;R.tv=false;leaveFull();if(topM()==='tv')popM(1);render()}
 addEventListener('popstate',()=>{
   if(ign){ign--;return}
@@ -707,13 +742,16 @@ function vField(C,interactive){
       h+=`<div class="ondeck"><span>대기 타석</span>${[1,2,3].filter(d=>d<n).map(d=>{const j=(i+d)%n;return `<b>${j+1}.${esc(C.nm(g.lineup[j].pid))}</b>`}).join('')}</div>`}
   }
   const occ=k=>g.bases[k]&&live?' on':'';
-  return `<div class="cfield"><svg viewBox="0 0 100 87" preserveAspectRatio="none" aria-hidden="true">
+  return `<div class="cfield">${fieldBg(occ)}${h}</div>`;
+}
+function fieldBg(occ=()=>''){
+  return `<svg viewBox="0 0 100 87" preserveAspectRatio="none" aria-hidden="true">
     <path d="M3 25 Q50 -16 97 25" fill="none" stroke="rgba(255,255,255,.14)" stroke-width=".5"/>
     <path d="M50 31 L73 54 L50 77 L27 54 Z" fill="#b99c74"/><path d="M50 41 L63 54 L50 67 L37 54 Z" fill="#3c7d4e"/>
     <circle cx="50" cy="55" r="3.3" fill="#b99c74"/>
     <path d="M50 72 L0 22 M50 72 L100 22" stroke="rgba(255,255,255,.75)" stroke-width=".45"/>
     ${BASEXY.map(([x,y],k)=>`<rect class="sbase${occ(k)}" x="${x-1.6}" y="${y-1.6}" width="3.2" height="3.2" transform="rotate(45 ${x} ${y})"/>`).join('')}
-    <path d="M48.3 71 h3.4 v1.6 l-1.7 1.6 l-1.7 -1.6 Z" fill="#fff"/></svg>${h}</div>`;
+    <path d="M48.3 71 h3.4 v1.6 l-1.7 1.6 l-1.7 -1.6 Z" fill="#fff"/></svg>`;
 }
 const SEQC={B:'b',S:'s',F:'f',X:'x',H:'h'};
 function seqDots(seq){return `<span class="pseq">${[...(seq||'')].map((c,i)=>`<i class="${SEQC[c]||'f'}" title="${SEQ[c]||''}">${i+1}</i>`).join('')}</span>`}
@@ -900,7 +938,7 @@ function vFieldPlan(g,n){
     const dup=Object.keys(m).filter(x=>m[x]>1).map(x=>POSK[x]),miss=['C','1B','2B','3B','SS','LF','CF','RF'].filter(x=>!m[x]).map(x=>POSK[x]);
     return {k,dup,miss,cnt:Object.values(m).reduce((a,b)=>a+b,0)}});
   const opts=sel=>POS.filter(x=>x!=='DH'&&x!=='EH').map(x=>`<option value="${x}" ${x===sel?'selected':''}>${x?POSK[x]:'-'}</option>`).join('');
-  return `<section class="card" style="padding:14px 12px"><h2 class="sec" style="padding:0 4px">이닝별 수비 <span class="hint">휴식 포함</span></h2>
+  return `<section class="card" style="padding:14px 12px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><h2 class="sec" style="padding:0 4px">이닝별 수비 <span class="hint">휴식 포함</span></h2>${g.lineup.length?'<button class="chipbtn" data-act="dv">큰 화면으로 보기</button>':''}</div>
     ${g.lineup.length?`<div class="tw"><table class="sb fp"><thead><tr><th class="nm">타자</th>${cols.map(k=>`<th class="${k===cur?'now':''}">${k}회</th>`).join('')}</tr></thead><tbody>
     ${g.lineup.map((l,i)=>`<tr><td class="nm">${i+1}. ${esc(pname(l.pid))}</td>${cols.map(k=>{const v=posFor(l,k);return `<td class="${v==='BN'?'bn':v==='P'?'pp':''}"><select id="fp-${i}-${k}" data-fpos="${i},${k}" aria-label="${esc(pname(l.pid))} ${k}회 수비">${opts(v)}</select></td>`}).join('')}</tr>`).join('')}
     <tr class="tot"><td class="nm">수비 인원</td>${warn.map(w=>`<td class="${w.dup.length?'bad':''}">${w.cnt}명</td>`).join('')}</tr></tbody></table></div>`:'<p class="hint">타순을 먼저 정해 주세요.</p>'}
@@ -1026,6 +1064,38 @@ function vTV(g){
   </div>`;
 }
 
+/* ---------- full-screen defense view ---------- */
+function dvBuild(g,k){
+  const by={},rest=[],extra=[],none=[];
+  g.lineup.forEach(l=>{const ps=posFor(l,k),nm=pname(l.pid);
+    if(ps==='BN')rest.push(nm);else if(ps==='DH'||ps==='EH')extra.push(nm);else if(!ps)none.push(nm);else(by[ps]??=[]).push({pid:l.pid,nm})});
+  const as=g.apps.filter(a=>a.inn===k&&(a.pid||a.name)),a=as[as.length-1];
+  const ppid=a?a.pid:planFor(g,k);
+  const pit=a?appName(a):ppid?pname(ppid):(by.P&&by.P[0].nm)||'';
+  return {by,rest,extra,none,pit,ppid};
+}
+function vDV(g){
+  const n=Math.max(g.innings,g.inning),k=Math.min(Math.max(+R.dvInn||1,1),n),live=g.status==='live',curDef=live&&defending(g)?g.inning:0;
+  const d=dvBuild(g,k),has=g.lineup.length>0,at=ps=>(d.by[ps]||[]).filter(x=>x.pid!==d.ppid);
+  const spots=Object.keys(FPOS).map(ps=>{const arr=at(ps);
+    return arr.length?`<span class="fl${arr.length>1?' dup':''}" style="${pct(FPOS[ps])}">${esc(arr[0].nm)}${arr.length>1?` +${arr.length-1}`:''}</span>`
+      :`<span class="fl empty" style="${pct(FPOS[ps])}">${POSK[ps]}</span>`}).join('');
+  const mound=`<span class="fl p${d.pit?'':' empty'}" style="${pct([50,55])}">${d.pit?esc(d.pit):'투수'}</span>`;
+  const miss=Object.keys(FPOS).filter(ps=>!at(ps).length).map(ps=>POSK[ps]);if(!d.pit)miss.unshift('투수');
+  const dup=Object.keys(FPOS).filter(ps=>(d.by[ps]||[]).length>1).map(ps=>POSK[ps]);
+  const warn=[miss.length?`비어 있는 자리: ${miss.join(' · ')}`:'',dup.length?`겹치는 자리: ${dup.join(' · ')}`:''].filter(Boolean);
+  const rows=[['휴식',d.rest],['지명·추가',d.extra],['위치 미정',d.none]].filter(r=>r[1].length);
+  const prev=k>1?k-1:0,next=k<n?k+1:0;
+  return `<div class="dv" role="dialog" aria-label="이닝별 수비 배치">
+    <div class="dv-top"><div class="dv-ttl">${k}회 수비<small>${k===curDef?'지금 수비 중 · ':''}vs ${esc(g.opp)}</small></div>
+      <button class="dv-b" data-dvinn="${prev}" ${prev?'':'disabled'} aria-label="이전 이닝">‹</button><button class="dv-b" data-dvinn="${next}" ${next?'':'disabled'} aria-label="다음 이닝">›</button>
+      <button class="dv-b" data-act="tvClose" aria-label="닫기">${I.x}</button></div>
+    <div class="dv-chips" role="tablist">${[...Array(n)].map((_,i)=>`<button class="dv-chip ${i+1===curDef?'now':''}" data-dvinn="${i+1}" aria-pressed="${i+1===k}">${i+1}회</button>`).join('')}</div>
+    <div class="dv-main">${has?`<div class="cfield">${fieldBg()}${mound}${spots}</div>`:'<p class="dv-empty">준비 탭에서 타순과 수비 위치를 먼저 정해 주세요.</p>'}</div>
+    <div class="dv-rest">${has?warn.map(w=>`<div class="w">${w}</div>`).join(''):''}${rows.map(([t,a])=>`<div><b>${t}</b>${a.map(esc).join(' · ')}</div>`).join('')}</div>
+  </div>`;
+}
+
 /* ---------- sheets ---------- */
 function vSheet(){
   const g=R.gid?G():null,t=R.sheet;let b='';
@@ -1040,6 +1110,7 @@ function vSheet(){
   }else if(t==='more'&&g){
     b=`<div class="menu">
       <button data-act="menuPrep">${I.edit}경기 정보·타순 고치기</button>
+      <button data-act="dv">${I.field}이닝별 수비 큰 화면</button>
       <button data-act="menuTv">${I.tv}전광판으로 보기</button>
       ${g.status==='live'?`<button data-act="endAsk">${I.flag}경기 종료</button>`:`<button data-act="reopen">${I.play}경기 다시 진행</button>`}
       <button class="danger" data-act="delAsk">${I.trash}경기 삭제</button></div>`;
@@ -1071,7 +1142,7 @@ function render(){
   const g=R.screen==='game'?G():null;
   let h=R.screen==='players'?vPlayers():R.screen==='settings'?vSettings():g?vGame(g):vHome();
   if(R.screen!=='game')h+=vNav();
-  if(R.tv&&g)h+=vTV(g);
+  if(R.tv&&g)h+=R.tv==='def'?vDV(g):vTV(g);
   if(R.sheet)h+=vSheet();
   root.innerHTML=h;
   document.body.classList.toggle('lock',!!(R.sheet||R.tv));
@@ -1127,9 +1198,10 @@ async function shareFile(file){
 let pendingImport=null;
 
 document.addEventListener('click',e=>{
-  const el=e.target.closest('[data-cinn],[data-goplan],[data-prep],[data-nav],[data-open],[data-tab],[data-ptab],[data-pitch],[data-res],[data-sheet],[data-act],[data-base],[data-relief],[data-confirm],[data-exp],[data-mv],[data-lrm],[data-pdel]');
+  const el=e.target.closest('[data-dvinn],[data-cinn],[data-goplan],[data-prep],[data-nav],[data-open],[data-tab],[data-ptab],[data-pitch],[data-res],[data-sheet],[data-act],[data-base],[data-relief],[data-confirm],[data-exp],[data-mv],[data-lrm],[data-pdel]');
   if(!el)return;
   const ds=el.dataset;
+  if(ds.dvinn!==undefined){dvGo(+ds.dvinn);return}
   if(ds.cinn){setR({cinn:ds.cinn==='R'?'R':+ds.cinn});return}
   const g=G();
   if(ds.nav!==undefined){setR({screen:ds.nav,gid:null,sheet:null,tv:false});scrollTo(0,0);return}
@@ -1157,6 +1229,7 @@ document.addEventListener('click',e=>{
     case 'hideEx':D.example=false;save();render();return;
     case 'undo':undo();return;
     case 'tv':openTv();return;
+    case 'dv':openDv();return;
     case 'menuTv':R.sheet=null;R.sd=null;R.tv=true;if(topM()==='sheet')swapM('tv');else pushM('tv');render();enterFull();return;
     case 'tvClose':closeTv();return;
     case 'tvPad':setR({tvPad:!R.tvPad});return;
@@ -1205,6 +1278,7 @@ document.addEventListener('keydown',e=>{
   if((e.key==='Enter'||e.key===' ')&&t.dataset&&t.dataset.base!==undefined){e.preventDefault();t.dispatchEvent(new MouseEvent('click',{bubbles:true}))}
   if(e.key==='Enter'&&t.id==='newName'){e.preventDefault();document.querySelector('[data-act="addPlayer"]').click()}
   if(e.key==='Escape'&&(R.sheet||R.tv)){R.sheet?closeSheet():closeTv()}
+  if(R.tv==='def'&&!R.sheet&&(e.key==='ArrowLeft'||e.key==='ArrowRight'))dvGo((+R.dvInn||1)+(e.key==='ArrowLeft'?-1:1));
 });
 function onField(e){
   const el=e.target,d=el.dataset,g=G();
